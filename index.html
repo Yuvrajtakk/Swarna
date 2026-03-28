@@ -1,0 +1,1382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Swarna — Gold & Silver Trading</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Mono:wght@300;400&family=Outfit:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --gold:        #C9A84C;
+    --gold-light:  #E8C97A;
+    --gold-dim:    #8B6F34;
+    --silver:      #A8B8C8;
+    --silver-light:#D4E0EC;
+    --bg:          #0D0C0A;
+    --bg2:         #131210;
+    --bg3:         #1A1815;
+    --surface:     #1E1C18;
+    --border:      rgba(201,168,76,0.15);
+    --border2:     rgba(201,168,76,0.08);
+    --text:        #E8E0D0;
+    --text-dim:    #8A7F6E;
+    --text-faint:  #4A4438;
+    --red:         #C0555A;
+    --green:       #5A9C6A;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+    font-weight: 300;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Grain overlay ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 999; opacity: 0.6;
+  }
+
+  /* ── Layout ── */
+  .app { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+  /* ── Header ── */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 28px 0 24px;
+    display: flex; align-items: baseline; justify-content: space-between;
+    animation: fadeDown 0.8s ease both;
+  }
+  .logo {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2rem; font-weight: 300; letter-spacing: 0.12em;
+    color: var(--gold);
+  }
+  .logo span { color: var(--text-dim); font-style: italic; font-size: 0.9rem; letter-spacing: 0.06em; margin-left: 12px; }
+  .nav { display: flex; gap: 8px; }
+  .nav button {
+    background: none; border: 1px solid transparent;
+    color: var(--text-dim); font-family: 'Outfit', sans-serif;
+    font-size: 0.78rem; letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 7px 16px; cursor: pointer; transition: all 0.2s;
+    border-radius: 2px;
+  }
+  .nav button:hover { color: var(--gold); border-color: var(--border); }
+  .nav button.active { color: var(--gold); border-color: var(--gold-dim); background: rgba(201,168,76,0.06); }
+
+  /* ── Ticker bar ── */
+  .ticker {
+    background: var(--bg3); border-bottom: 1px solid var(--border2);
+    padding: 10px 0; overflow: hidden;
+    animation: fadeIn 1s ease 0.3s both;
+  }
+  .ticker-inner {
+    display: flex; gap: 48px;
+    animation: tickerScroll 30s linear infinite;
+    white-space: nowrap;
+  }
+  .ticker-item {
+    display: flex; align-items: center; gap: 10px;
+    font-family: 'DM Mono', monospace; font-size: 0.75rem;
+  }
+  .ticker-label { color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.1em; }
+  .ticker-val { color: var(--gold); }
+  .ticker-change { font-size: 0.65rem; }
+  .ticker-change.up { color: var(--green); }
+  .ticker-change.dn { color: var(--red); }
+  @keyframes tickerScroll { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
+
+  /* ── Section titles ── */
+  .section { padding: 48px 0; }
+  .section-head {
+    display: flex; align-items: baseline; gap: 16px;
+    margin-bottom: 32px;
+    animation: fadeUp 0.6s ease both;
+  }
+  .section-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.7rem; font-weight: 300; color: var(--gold-light);
+    letter-spacing: 0.04em;
+  }
+  .section-line {
+    flex: 1; height: 1px;
+    background: linear-gradient(90deg, var(--border), transparent);
+  }
+  .section-sub {
+    font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--text-faint);
+  }
+
+  /* ── Price cards ── */
+  .price-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .price-card {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 4px; padding: 28px;
+    position: relative; overflow: hidden;
+    transition: border-color 0.3s;
+    animation: fadeUp 0.5s ease both;
+  }
+  .price-card:hover { border-color: var(--border); }
+  .price-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    opacity: 0; transition: opacity 0.3s;
+  }
+  .price-card:hover::before { opacity: 1; }
+  .price-card.silver::before { background: linear-gradient(90deg, transparent, var(--silver), transparent); }
+  .price-metal {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--text-faint); margin-bottom: 12px;
+  }
+  .price-main {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2.8rem; font-weight: 300; color: var(--gold);
+    line-height: 1;
+  }
+  .price-card.silver .price-main { color: var(--silver-light); }
+  .price-unit { font-size: 0.9rem; color: var(--text-dim); margin-left: 6px; }
+  .price-rows { margin-top: 20px; display: flex; flex-direction: column; gap: 8px; }
+  .price-row {
+    display: flex; justify-content: space-between; align-items: center;
+    font-family: 'DM Mono', monospace; font-size: 0.72rem;
+    padding: 6px 0; border-bottom: 1px solid var(--border2);
+  }
+  .price-row:last-child { border: none; }
+  .price-row-label { color: var(--text-faint); }
+  .price-row-val { color: var(--text-dim); }
+  .usd-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(201,168,76,0.08); border: 1px solid var(--border);
+    border-radius: 2px; padding: 4px 10px;
+    font-family: 'DM Mono', monospace; font-size: 0.7rem; color: var(--text-dim);
+    margin-top: 12px;
+  }
+
+  /* ── Item grid ── */
+  .items-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+  .item-card {
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: 4px; padding: 24px;
+    cursor: pointer; transition: all 0.25s;
+    animation: fadeUp 0.5s ease both;
+    position: relative;
+  }
+  .item-card:hover { border-color: var(--gold-dim); transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+  .item-card.selected { border-color: var(--gold); background: rgba(201,168,76,0.06); }
+  .item-badge {
+    display: inline-block; margin-bottom: 14px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem; letter-spacing: 0.15em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: 2px;
+  }
+  .badge-gold { background: rgba(201,168,76,0.15); color: var(--gold); border: 1px solid rgba(201,168,76,0.3); }
+  .badge-silver { background: rgba(168,184,200,0.15); color: var(--silver); border: 1px solid rgba(168,184,200,0.3); }
+  .badge-other { background: rgba(255,255,255,0.05); color: var(--text-dim); border: 1px solid var(--border2); }
+  .item-name {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.2rem; font-weight: 400; color: var(--text);
+    margin-bottom: 12px; line-height: 1.3;
+  }
+  .item-price-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 1rem; color: var(--gold); margin-bottom: 6px;
+  }
+  .item-card.silver-card .item-price-label { color: var(--silver-light); }
+  .item-meta { font-size: 0.7rem; color: var(--text-faint); letter-spacing: 0.06em; }
+  .item-select-hint {
+    position: absolute; bottom: 16px; right: 16px;
+    font-size: 0.65rem; color: var(--text-faint); letter-spacing: 0.08em;
+    opacity: 0; transition: opacity 0.2s;
+  }
+  .item-card:hover .item-select-hint { opacity: 1; }
+
+  /* ── Order form ── */
+  .order-panel {
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: 4px; padding: 32px;
+    animation: fadeIn 0.4s ease both;
+  }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+  .field { display: flex; flex-direction: column; gap: 8px; }
+  .field.full { grid-column: 1 / -1; }
+  label {
+    font-size: 0.65rem; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--text-faint);
+  }
+  input, select, textarea {
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: 3px;
+    color: var(--text);
+    font-family: 'Outfit', sans-serif; font-size: 0.9rem; font-weight: 300;
+    padding: 10px 14px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+  }
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--gold-dim);
+    box-shadow: 0 0 0 3px rgba(201,168,76,0.08);
+  }
+  select option { background: var(--bg2); }
+  .order-summary {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 3px; padding: 20px; margin-bottom: 24px;
+  }
+  .summary-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 0; border-bottom: 1px solid var(--border2);
+    font-size: 0.85rem;
+  }
+  .summary-row:last-child { border: none; font-size: 1rem; font-weight: 500; }
+  .summary-label { color: var(--text-dim); }
+  .summary-val { font-family: 'DM Mono', monospace; color: var(--text); }
+  .summary-total { color: var(--gold); }
+
+  /* ── Buttons ── */
+  .btn {
+    font-family: 'Outfit', sans-serif; font-size: 0.8rem; font-weight: 400;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 12px 28px; border-radius: 2px; cursor: pointer;
+    transition: all 0.2s; border: none;
+  }
+  .btn-primary {
+    background: var(--gold); color: var(--bg);
+    box-shadow: 0 2px 16px rgba(201,168,76,0.25);
+  }
+  .btn-primary:hover { background: var(--gold-light); box-shadow: 0 4px 24px rgba(201,168,76,0.35); }
+  .btn-primary:disabled { background: var(--text-faint); box-shadow: none; cursor: not-allowed; }
+  .btn-ghost {
+    background: transparent; color: var(--text-dim);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { border-color: var(--gold-dim); color: var(--gold); }
+
+  /* ── Payment ── */
+  .payment-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .payment-block {
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: 4px; padding: 28px;
+    animation: fadeUp 0.5s ease both;
+  }
+  .payment-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem; letter-spacing: 0.15em; text-transform: uppercase;
+    color: var(--gold-dim); margin-bottom: 18px;
+  }
+  .payment-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 16px; }
+  .payment-key { font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-faint); }
+  .payment-val { font-family: 'DM Mono', monospace; font-size: 0.9rem; color: var(--text); }
+  .upi-chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(201,168,76,0.1); border: 1px solid var(--border);
+    border-radius: 20px; padding: 6px 14px;
+    font-family: 'DM Mono', monospace; font-size: 0.85rem; color: var(--gold);
+    margin-top: 4px;
+  }
+
+  /* ── Admin panel ── */
+  .admin-login {
+    max-width: 400px; margin: 60px auto;
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: 4px; padding: 40px;
+    animation: fadeUp 0.5s ease both;
+  }
+  .admin-login-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.6rem; color: var(--gold); margin-bottom: 28px;
+    text-align: center;
+  }
+  .admin-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+    margin-bottom: 24px;
+  }
+  .stat-card {
+    background: var(--bg3); border: 1px solid var(--border2);
+    border-radius: 4px; padding: 20px;
+    animation: fadeUp 0.4s ease both;
+  }
+  .stat-num {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2.4rem; font-weight: 300; color: var(--gold);
+  }
+  .stat-label { font-size: 0.7rem; letter-spacing: 0.1em; color: var(--text-faint); text-transform: uppercase; }
+  .orders-table { width: 100%; border-collapse: collapse; }
+  .orders-table th {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem; letter-spacing: 0.15em; text-transform: uppercase;
+    color: var(--text-faint); text-align: left;
+    padding: 10px 14px; border-bottom: 1px solid var(--border2);
+  }
+  .orders-table td {
+    padding: 12px 14px; font-size: 0.82rem;
+    border-bottom: 1px solid var(--border2); color: var(--text-dim);
+  }
+  .orders-table tr:hover td { background: var(--bg3); }
+  .status-badge {
+    display: inline-block; padding: 2px 10px; border-radius: 10px;
+    font-size: 0.65rem; letter-spacing: 0.08em; text-transform: uppercase;
+    font-family: 'DM Mono', monospace;
+  }
+  .status-pending { background: rgba(201,168,76,0.1); color: var(--gold); border: 1px solid rgba(201,168,76,0.3); }
+  .status-paid    { background: rgba(90,156,106,0.1); color: var(--green); border: 1px solid rgba(90,156,106,0.3); }
+  .status-failed  { background: rgba(192,85,90,0.1); color: var(--red); border: 1px solid rgba(192,85,90,0.3); }
+
+  /* ── Toast ── */
+  .toast-wrap { position: fixed; bottom: 28px; right: 28px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
+  .toast {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 4px; padding: 14px 20px; min-width: 260px;
+    font-size: 0.82rem; color: var(--text);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    animation: toastIn 0.3s ease both;
+  }
+  .toast.success { border-left: 3px solid var(--green); }
+  .toast.error   { border-left: 3px solid var(--red); }
+  @keyframes toastIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
+
+  /* ── Loading ── */
+  .shimmer {
+    background: linear-gradient(90deg, var(--bg3) 25%, var(--surface) 50%, var(--bg3) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 4px;
+  }
+  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  .loading-card { height: 180px; }
+
+  /* ── Animations ── */
+  @keyframes fadeDown { from{opacity:0;transform:translateY(-16px)} to{opacity:1;transform:none} }
+  @keyframes fadeUp   { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:none} }
+  @keyframes fadeIn   { from{opacity:0} to{opacity:1} }
+
+  /* ── Responsive ── */
+  @media(max-width: 680px) {
+    .price-grid, .payment-grid, .form-grid, .admin-grid { grid-template-columns: 1fr; }
+    .logo span { display: none; }
+    .items-grid { grid-template-columns: 1fr; }
+  }
+
+  /* ── Modal ── */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 1000; animation: fadeIn 0.2s ease both;
+    backdrop-filter: blur(4px);
+  }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 6px; padding: 36px; max-width: 480px; width: 90%;
+    animation: fadeUp 0.3s ease both;
+  }
+  .modal-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.5rem; color: var(--gold); margin-bottom: 6px;
+  }
+  .modal-sub { font-size: 0.8rem; color: var(--text-faint); margin-bottom: 24px; }
+  .modal-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px; }
+
+  .empty {
+    text-align: center; padding: 60px 20px;
+    color: var(--text-faint); font-size: 0.85rem; letter-spacing: 0.06em;
+  }
+  .divider { height: 1px; background: var(--border2); margin: 8px 0; }
+</style>
+</head>
+<body>
+
+<div id="root"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script>
+const { useState, useEffect, useCallback, useRef } = React;
+
+// ── Config ────────────────────────────────────────────────────────────────────
+const API = 'http://localhost:8000';
+const ADMIN_KEY = 'secret-admin-key-change-me'; // match your .env
+
+// ── API helpers ───────────────────────────────────────────────────────────────
+const api = {
+  get: (path) => fetch(`${API}${path}`).then(r => r.json()),
+  post: (path, body) => fetch(`${API}${path}`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(body)
+  }).then(r => r.json()),
+  adminGet: (path) => fetch(`${API}${path}`, { headers: {'X-Api-Key': ADMIN_KEY} }).then(r => r.json()),
+  adminPost: (path, body) => fetch(`${API}${path}`, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json','X-Api-Key': ADMIN_KEY},
+    body: JSON.stringify(body)
+  }).then(r => r.json()),
+  adminPut: (path, body) => fetch(`${API}${path}`, {
+    method: 'PUT',
+    headers: {'Content-Type':'application/json','X-Api-Key': ADMIN_KEY},
+    body: JSON.stringify(body)
+  }).then(r => r.json()),
+  adminDelete: (path) => fetch(`${API}${path}`, {
+    method: 'DELETE', headers: {'X-Api-Key': ADMIN_KEY}
+  }).then(r => r.json()),
+};
+
+// ── Customer Profile (soft login) ─────────────────────────────────────────────
+const PROFILE_KEY = 'swarna_customer';
+const PROFILE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+function useCustomerProfile() {
+  const load = () => {
+    try {
+      const raw = JSON.parse(localStorage.getItem(PROFILE_KEY));
+      if (!raw) return null;
+      if (raw.savedAt && Date.now() - raw.savedAt > PROFILE_TTL_MS) {
+        localStorage.removeItem(PROFILE_KEY);
+        return null;
+      }
+      return raw;
+    } catch { return null; }
+  };
+
+  const [profile, setProfile] = useState(load);
+
+  const save = (name, phone) => {
+    const cleanPhone = phone.replace(/\D/g, '').slice(-10);
+    const p = { name: name.trim(), phone: cleanPhone, savedAt: Date.now() };
+    localStorage.setItem(PROFILE_KEY, JSON.stringify(p));
+    setProfile(p);
+  };
+
+  const clear = () => {
+    localStorage.removeItem(PROFILE_KEY);
+    setProfile(null);
+  };
+
+  return { profile, save, clear };
+}
+
+// ── CustomerInfoBar ───────────────────────────────────────────────────────────
+function CustomerInfoBar({ profile, onSave, onClear }) {
+  const [editing, setEditing] = useState(!profile);
+  const [name,  setName]  = useState(profile?.name  || '');
+  const [phone, setPhone] = useState(profile?.phone || '');
+  const [err,   setErr]   = useState('');
+
+  useEffect(() => {
+    if (!profile) { setEditing(true); setName(''); setPhone(''); }
+  }, [profile]);
+
+  const handleSave = () => {
+    if (!name.trim()) return setErr('Please enter your name.');
+    const digits = phone.replace(/\D/g, '').slice(-10);
+    if (!/^[6-9]\d{9}$/.test(digits)) return setErr('Enter a valid 10-digit Indian mobile number (starting with 6–9).');
+    setErr('');
+    onSave(name, phone);
+    setEditing(false);
+  };
+
+  if (profile && !editing) return React.createElement('div', {
+    style: {
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      background: 'rgba(201,168,76,0.07)', border: '1px solid var(--border)',
+      borderRadius: 4, padding: '12px 18px', marginBottom: 28,
+      flexWrap: 'wrap', gap: 10,
+    }
+  },
+    React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 12 } },
+      React.createElement('div', { style: {
+        width: 34, height: 34, borderRadius: '50%',
+        background: 'rgba(201,168,76,0.15)', border: '1px solid var(--border)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontFamily: 'Cormorant Garamond, serif', fontSize: '1rem', color: 'var(--gold)',
+      }}, (profile.name || '?')[0].toUpperCase()),
+      React.createElement('div', null,
+        React.createElement('div', { style: { fontSize: '0.9rem', color: 'var(--text)', fontWeight: 400 } }, profile.name),
+        React.createElement('div', { style: { fontSize: '0.72rem', fontFamily: 'DM Mono, monospace', color: 'var(--text-faint)' } }, profile.phone)
+      )
+    ),
+    React.createElement('div', { style: { display: 'flex', gap: 8 } },
+      React.createElement('button', {
+        className: 'btn btn-ghost',
+        style: { padding: '5px 12px', fontSize: '0.68rem' },
+        onClick: () => { setName(profile.name); setPhone(profile.phone); setEditing(true); }
+      }, 'Edit'),
+      React.createElement('button', {
+        className: 'btn btn-ghost',
+        style: { padding: '5px 12px', fontSize: '0.68rem', color: 'var(--text-faint)' },
+        onClick: onClear
+      }, 'Not you?')
+    )
+  );
+
+  return React.createElement('div', {
+    style: {
+      background: 'var(--surface)', border: '1px solid var(--border2)',
+      borderRadius: 4, padding: '20px 22px', marginBottom: 28,
+    }
+  },
+    React.createElement('div', { style: {
+      fontSize: '0.62rem', letterSpacing: '0.16em', textTransform: 'uppercase',
+      color: 'var(--text-faint)', marginBottom: 14,
+    }}, 'Your Details — saved for future bookings'),
+
+    React.createElement('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 } },
+      React.createElement('div', { className: 'field' },
+        React.createElement('label', null, 'Full Name *'),
+        React.createElement('input', {
+          type: 'text', placeholder: 'e.g. Rahul Sharma',
+          value: name, onChange: e => setName(e.target.value),
+          onKeyDown: e => e.key === 'Enter' && handleSave(),
+          autoFocus: true,
+        })
+      ),
+      React.createElement('div', { className: 'field' },
+        React.createElement('label', null, 'WhatsApp / Phone *'),
+        React.createElement('input', {
+          type: 'tel', placeholder: 'e.g. 9876543210',
+          value: phone, onChange: e => setPhone(e.target.value),
+          onKeyDown: e => e.key === 'Enter' && handleSave(),
+        })
+      ),
+    ),
+
+    err && React.createElement('div', { style: { fontSize: '0.75rem', color: 'var(--red)', marginTop: 8 } }, err),
+
+    React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 12, marginTop: 14 } },
+      React.createElement('button', { className: 'btn btn-primary', style: { padding: '9px 22px' }, onClick: handleSave }, 'Save & Continue →'),
+      profile && React.createElement('button', {
+        className: 'btn btn-ghost', style: { padding: '9px 16px' },
+        onClick: () => setEditing(false),
+      }, 'Cancel'),
+      React.createElement('div', { style: { fontSize: '0.68rem', color: 'var(--text-faint)', marginLeft: 4 } },
+        'Your details are stored securely on this device only (not shared online).'
+      )
+    )
+  );
+}
+
+// ── Toast System ──────────────────────────────────────────────────────────────
+function useToast() {
+  const [toasts, setToasts] = useState([]);
+  const push = useCallback((msg, type='success') => {
+    const id = Date.now();
+    setToasts(t => [...t, {id, msg, type}]);
+    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 3500);
+  }, []);
+  return { toasts, push };
+}
+
+function ToastBar({ toasts }) {
+  return React.createElement('div', { className: 'toast-wrap' },
+    ...toasts.map(t =>
+      React.createElement('div', { key: t.id, className: `toast ${t.type}` }, t.msg)
+    )
+  );
+}
+
+// ── Ticker ────────────────────────────────────────────────────────────────────
+function Ticker({ prices }) {
+  const items = prices.length ? prices : [
+    { metal: 'gold',   current_price: '--', prev_month: '--', usd_to_inr: '--' },
+    { metal: 'silver', current_price: '--', prev_month: '--', usd_to_inr: '--' },
+  ];
+
+  const tickerItems = [...items, ...items].map((p, i) => {
+    const curr = parseFloat(p.current_price);
+    const prev = parseFloat(p.prev_month);
+    const chg  = curr && prev ? ((curr - prev) / prev * 100).toFixed(2) : null;
+    return React.createElement('div', { key: i, className: 'ticker-item' },
+      React.createElement('span', { className: 'ticker-label' }, p.metal.toUpperCase()),
+      React.createElement('span', { className: 'ticker-val' },
+        curr ? `₹${curr.toLocaleString('en-IN', {maximumFractionDigits:2})}` : '—'
+      ),
+      chg && React.createElement('span', { className: `ticker-change ${parseFloat(chg) >= 0 ? 'up' : 'dn'}` },
+        `${parseFloat(chg) >= 0 ? '▲' : '▼'} ${Math.abs(chg)}%`
+      ),
+      i < items.length && React.createElement('span', { className: 'ticker-label', style:{marginLeft:24} },
+        `USD/INR ${p.usd_to_inr ? parseFloat(p.usd_to_inr).toFixed(2) : '—'}`
+      )
+    );
+  });
+
+  return React.createElement('div', { className: 'ticker' },
+    React.createElement('div', { className: 'app' },
+      React.createElement('div', { className: 'ticker-inner' }, ...tickerItems)
+    )
+  );
+}
+
+// ── Prices section ────────────────────────────────────────────────────────────
+function PricesSection({ prices, loading }) {
+  const fmt = (v) => v ? `₹${parseFloat(v).toLocaleString('en-IN', {maximumFractionDigits:2})}` : '—';
+
+  if (loading) return React.createElement('div', { className: 'price-grid' },
+    React.createElement('div', { className: 'shimmer loading-card' }),
+    React.createElement('div', { className: 'shimmer loading-card' })
+  );
+
+  if (!prices.length) return React.createElement('div', { className: 'empty' }, 'Price data loading...');
+
+  return React.createElement('div', { className: 'price-grid' },
+    ...prices.map((p, i) => {
+      const isSilver = p.metal === 'silver';
+      const curr = parseFloat(p.current_price);
+      const prev = parseFloat(p.prev_month);
+      const chg  = curr && prev ? ((curr - prev) / prev * 100).toFixed(2) : null;
+
+      return React.createElement('div', { key: p.id || i, className: `price-card ${isSilver ? 'silver' : ''}`, style:{animationDelay:`${i*0.1}s`} },
+        React.createElement('div', { className: 'price-metal' }, `MCX ${p.metal.toUpperCase()} — LIVE`),
+        React.createElement('div', { className: 'price-main' },
+          curr ? curr.toLocaleString('en-IN', {maximumFractionDigits:2}) : '—',
+          React.createElement('span', { className: 'price-unit' }, '/ gram')
+        ),
+        chg && React.createElement('div', { style:{marginTop:8, fontSize:'0.75rem', color: parseFloat(chg)>=0?'var(--green)':'var(--red)', fontFamily:'DM Mono, monospace'} },
+          `${parseFloat(chg) >= 0 ? '▲' : '▼'} ${Math.abs(chg)}% vs last month`
+        ),
+        React.createElement('div', { className: 'price-rows' },
+          React.createElement('div', { className: 'price-row' },
+            React.createElement('span', { className: 'price-row-label' }, 'Previous Month'),
+            React.createElement('span', { className: 'price-row-val' }, fmt(p.prev_month))
+          ),
+          React.createElement('div', { className: 'price-row' },
+            React.createElement('span', { className: 'price-row-label' }, 'Next Month Est.'),
+            React.createElement('span', { className: 'price-row-val' }, fmt(p.next_month))
+          ),
+        ),
+        p.usd_to_inr && React.createElement('div', { className: 'usd-badge' },
+          '💱', `1 USD = ₹${parseFloat(p.usd_to_inr).toFixed(2)}`
+        )
+      );
+    })
+  );
+}
+
+// ── Items section ─────────────────────────────────────────────────────────────
+function ItemsSection({ items, loading, selected, onSelect }) {
+  if (loading) return React.createElement('div', { className: 'items-grid' },
+    ...[1,2,3,4].map(i => React.createElement('div', { key: i, className: 'shimmer loading-card' }))
+  );
+
+  if (!items.length) return React.createElement('div', { className: 'empty' }, 'No items available.');
+
+  return React.createElement('div', { className: 'items-grid' },
+    ...items.map((item, i) =>
+      React.createElement('div', {
+        key: item.id,
+        className: `item-card ${item.type === 'silver' ? 'silver-card' : ''} ${selected?.id === item.id ? 'selected' : ''}`,
+        style: { animationDelay: `${i * 0.08}s` },
+        onClick: () => onSelect(item)
+      },
+        React.createElement('div', { className: `item-badge badge-${item.type}` }, item.type),
+        React.createElement('div', { className: 'item-name' }, item.name),
+        React.createElement('div', { className: 'item-price-label' },
+          item.price_label || (item.final_price ? `₹${item.final_price.toLocaleString('en-IN')}` : 'Price unavailable')
+        ),
+        React.createElement('div', { className: 'item-meta' }, `per ${item.unit} · margin ₹${item.margin}`),
+        React.createElement('div', { className: 'item-select-hint' }, 'Click to order →')
+      )
+    )
+  );
+}
+
+// ── Booking Confirmation Screen ────────────────────────────────────────────────
+function BookingConfirmation({ booking, paymentInfo, onReset }) {
+  return React.createElement('div', null,
+
+    React.createElement('div', { className: 'order-panel', style:{borderColor:'var(--green)', marginBottom:20} },
+      React.createElement('div', { style:{display:'flex', alignItems:'baseline', gap:16, marginBottom:20} },
+        React.createElement('div', { style:{color:'var(--green)', fontFamily:'DM Mono, monospace', fontSize:'0.65rem', letterSpacing:'0.18em'} }, '✓ BOOKING REQUESTED'),
+        React.createElement('div', { style:{flex:1, height:1, background:'rgba(90,156,106,0.2)'} })
+      ),
+      React.createElement('div', { style:{fontFamily:'Cormorant Garamond, serif', fontSize:'2.2rem', fontWeight:300, color:'var(--text)', marginBottom:4} },
+        `Booking #${booking.id}`
+      ),
+      React.createElement('div', { style:{fontFamily:'DM Mono, monospace', fontSize:'0.8rem', color:'var(--text-dim)', marginBottom:20} },
+        `${booking.item_name} · ${booking.quantity} ${booking.unit} · ₹${booking.total_amount?.toLocaleString('en-IN')} (indicative)`
+      ),
+
+      React.createElement('div', { style:{background:'var(--bg3)', border:'1px solid var(--border2)', borderRadius:4, padding:'16px 20px', marginBottom:20} },
+        React.createElement('div', { style:{fontSize:'0.65rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--text-faint)', marginBottom:12} }, 'What happens next'),
+        ...[
+          ['1', 'We will call or WhatsApp you to confirm the booking'],
+          ['2', 'Final price is confirmed at time of physical transaction'],
+          ['3', 'Payment is collected in-person or via UPI when you visit'],
+        ].map(([n, txt]) =>
+          React.createElement('div', { key:n, style:{display:'flex', gap:12, marginBottom:8, fontSize:'0.82rem', color:'var(--text-dim)'} },
+            React.createElement('span', { style:{color:'var(--gold)', fontFamily:'DM Mono, monospace', minWidth:16} }, n),
+            React.createElement('span', null, txt)
+          )
+        )
+      ),
+
+      paymentInfo?.phone && React.createElement('div', { style:{display:'flex', alignItems:'center', gap:12, flexWrap:'wrap'} },
+        React.createElement('a', {
+          href: `https://wa.me/91${paymentInfo.phone}?text=${encodeURIComponent('Hi, my Booking ID is #' + booking.id + ', Name: ' + booking.customer_name)}`,
+          target: '_blank',
+          style:{
+            display:'inline-flex', alignItems:'center', gap:8,
+            background:'rgba(37,211,102,0.12)', border:'1px solid rgba(37,211,102,0.3)',
+            borderRadius:2, padding:'9px 18px', color:'#25D366',
+            fontFamily:'Outfit, sans-serif', fontSize:'0.8rem', letterSpacing:'0.08em',
+            textDecoration:'none', transition:'all 0.2s'
+          }
+        }, `💬 WhatsApp Us — Booking #${booking.id}`),
+        paymentInfo.phone && React.createElement('span', { style:{fontFamily:'DM Mono, monospace', fontSize:'0.8rem', color:'var(--text-dim)'} },
+          '📞 ' + paymentInfo.phone
+        )
+      )
+    ),
+
+    (paymentInfo?.upi_id || paymentInfo?.qr_code_url) && React.createElement('div', { className:'order-panel', style:{marginBottom:20} },
+      React.createElement('div', { style:{fontSize:'0.65rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--text-faint)', marginBottom:16} },
+        'Payment details — for reference only. Pay when you visit or on confirmation.'
+      ),
+      React.createElement('div', { style:{display:'flex', gap:32, flexWrap:'wrap', alignItems:'flex-start'} },
+        paymentInfo.upi_id && React.createElement('div', null,
+          React.createElement('div', { className:'payment-key', style:{marginBottom:8} }, 'UPI ID'),
+          React.createElement('div', { className:'upi-chip' }, '📲 ', paymentInfo.upi_id)
+        ),
+        paymentInfo.qr_code_url && React.createElement('div', null,
+          React.createElement('div', { className:'payment-key', style:{marginBottom:8} }, 'Scan to Pay'),
+          React.createElement('img', { src: paymentInfo.qr_code_url, alt:'UPI QR', style:{width:120, height:120, borderRadius:4, border:'1px solid var(--border)', display:'block'} })
+        )
+      )
+    ),
+
+    React.createElement('button', { className:'btn btn-ghost', onClick: onReset }, '← Make Another Booking')
+  );
+}
+
+// ── Booking section ────────────────────────────────────────────────────────────
+function BookingSection({ items, push }) {
+  const { profile, save: saveProfile, clear: clearProfile } = useCustomerProfile();
+  const [selected, setSelected]       = useState(null);
+  const [form, setForm]               = useState({ quantity: '', notes: '' });
+  const [loading, setLoading]         = useState(false);
+  const [booking, setBooking]         = useState(null);
+  const [paymentInfo, setPaymentInfo] = useState(null);
+
+  useEffect(() => {
+    api.get('/payment-info').then(setPaymentInfo).catch(() => {});
+  }, []);
+
+  const total = selected && form.quantity && selected.final_price
+    ? (selected.final_price * parseFloat(form.quantity)).toFixed(2)
+    : null;
+
+  const canSubmit = !!profile;
+
+  const handleSubmit = async () => {
+    if (!profile)  return push('Please save your details first', 'error');
+    if (!selected) return push('Please select an item first', 'error');
+    if (!form.quantity || parseFloat(form.quantity) <= 0) return push('Enter a valid quantity', 'error');
+
+    setLoading(true);
+    try {
+      const res = await api.post('/booking', {
+        item_id:        selected.id,
+        customer_name:  profile.name,
+        customer_phone: profile.phone,
+        quantity:       parseFloat(form.quantity),
+        notes:          form.notes,
+      });
+
+      if (res.id) {
+        setBooking(res);
+        setForm({ quantity: '', notes: '' });
+        setSelected(null);
+      } else {
+        const msg = res.detail || res.error || 'Booking failed. Please try again.';
+        push(msg, 'error');
+      }
+    } catch (err) {
+      if (!navigator.onLine) {
+        push('No internet connection. Please check your network and try again.', 'error');
+      } else {
+        push('Could not reach the server. Please try again in a moment.', 'error');
+      }
+    }
+    setLoading(false);
+  };
+
+  const inp = (f) => (e) => setForm(p => ({ ...p, [f]: e.target.value }));
+
+  if (booking) {
+    return React.createElement(BookingConfirmation, {
+      booking, paymentInfo, onReset: () => setBooking(null),
+    });
+  }
+
+  return React.createElement('div', null,
+
+    React.createElement(CustomerInfoBar, {
+      profile,
+      onSave: saveProfile,
+      onClear: clearProfile,
+    }),
+
+    React.createElement('div', { style: { marginBottom: 32 } },
+      React.createElement('div', { className: 'section-head', style: { marginBottom: 20 } },
+        React.createElement('div', { className: 'section-title', style: { fontSize: '1.1rem' } }, 'Select Item'),
+        React.createElement('div', { className: 'section-line' })
+      ),
+      React.createElement(ItemsSection, { items, loading: false, selected, onSelect: setSelected })
+    ),
+
+    selected && profile && React.createElement('div', { className: 'order-panel' },
+      React.createElement('div', { style: { marginBottom: 24 } },
+        React.createElement('div', { style: { fontSize: '0.65rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--text-faint)', marginBottom: 6 } }, 'Selected Item'),
+        React.createElement('div', { style: { fontFamily: 'Cormorant Garamond, serif', fontSize: '1.4rem', color: 'var(--gold)' } }, selected.name),
+        React.createElement('div', { style: { fontFamily: 'DM Mono, monospace', fontSize: '0.85rem', color: 'var(--text-dim)' } }, selected.price_label)
+      ),
+
+      React.createElement('div', { className: 'form-grid' },
+        React.createElement('div', { className: 'field' },
+          React.createElement('label', null, `Quantity (${selected.unit}) *`),
+          React.createElement('input', { type: 'number', min: '0.1', step: '0.1', placeholder: 'Enter quantity', value: form.quantity, onChange: inp('quantity') })
+        ),
+        React.createElement('div', { className: 'field' },
+          React.createElement('label', null, 'Notes'),
+          React.createElement('input', { type: 'text', placeholder: 'Optional — delivery preference, timing, etc.', value: form.notes, onChange: inp('notes') })
+        ),
+      ),
+
+      total && React.createElement('div', { className: 'order-summary' },
+        React.createElement('div', { className: 'summary-row' },
+          React.createElement('span', { className: 'summary-label' }, 'Customer'),
+          React.createElement('span', { className: 'summary-val' }, `${profile.name} · ${profile.phone}`)
+        ),
+        React.createElement('div', { className: 'summary-row' },
+          React.createElement('span', { className: 'summary-label' }, 'Item'),
+          React.createElement('span', { className: 'summary-val' }, selected.name)
+        ),
+        React.createElement('div', { className: 'summary-row' },
+          React.createElement('span', { className: 'summary-label' }, 'Indicative price / unit'),
+          React.createElement('span', { className: 'summary-val' }, `₹${selected.final_price?.toLocaleString('en-IN')}`)
+        ),
+        React.createElement('div', { className: 'summary-row' },
+          React.createElement('span', { className: 'summary-label' }, 'Quantity'),
+          React.createElement('span', { className: 'summary-val' }, `${form.quantity} ${selected.unit}`)
+        ),
+        React.createElement('div', { className: 'divider' }),
+        React.createElement('div', { className: 'summary-row' },
+          React.createElement('span', { className: 'summary-label', style: { fontWeight: 500 } }, 'Indicative Total'),
+          React.createElement('span', { className: 'summary-val summary-total' }, `₹${parseFloat(total).toLocaleString('en-IN')}`)
+        ),
+        React.createElement('div', { style: { fontSize: '0.68rem', color: 'var(--text-faint)', marginTop: 8 } },
+          '* Final price confirmed at time of transaction. No payment required now.'
+        )
+      ),
+
+      React.createElement('div', { style: { display: 'flex', gap: 12 } },
+        React.createElement('button', { className: 'btn btn-primary', onClick: handleSubmit, disabled: loading },
+          loading ? 'Submitting...' : 'Request Booking →'
+        ),
+        React.createElement('button', { className: 'btn btn-ghost', onClick: () => setSelected(null) }, 'Cancel')
+      )
+    ),
+
+    selected && !profile && React.createElement('div', { style: {
+      textAlign: 'center', padding: '20px', fontSize: '0.82rem',
+      color: 'var(--text-faint)', fontStyle: 'italic',
+    }}, '↑ Save your details above to continue with this booking.')
+  );
+}
+
+// ── Payment section ───────────────────────────────────────────────────────────
+function PaymentSection() {
+  const [info, setInfo] = useState(null);
+
+  useEffect(() => {
+    api.get('/payment-info').then(setInfo).catch(() => {});
+  }, []);
+
+  if (!info) return React.createElement('div', { className: 'empty' }, 'Loading payment details...');
+
+  return React.createElement('div', null,
+
+    React.createElement('div', { style:{
+      background:'rgba(201,168,76,0.06)', border:'1px solid var(--border)',
+      borderRadius:4, padding:'14px 20px', marginBottom:24,
+      fontSize:'0.82rem', color:'var(--text-dim)', lineHeight:1.6
+    }},
+      '⚠️  Payment is collected ',
+      React.createElement('strong', { style:{color:'var(--text)'} }, 'offline'),
+      ' — in person or via UPI after our team contacts you. No online payment is required when placing a booking.'
+    ),
+
+    React.createElement('div', { className: 'payment-grid' },
+
+      React.createElement('div', { className: 'payment-block' },
+        React.createElement('div', { className: 'payment-title' }, '🏦 Bank Transfer'),
+        info.bank_name && React.createElement('div', { className: 'payment-row' },
+          React.createElement('div', { className: 'payment-key' }, 'Bank'),
+          React.createElement('div', { className: 'payment-val' }, info.bank_name)
+        ),
+        info.account_no && React.createElement('div', { className: 'payment-row' },
+          React.createElement('div', { className: 'payment-key' }, 'Account Number'),
+          React.createElement('div', { className: 'payment-val' }, info.account_no)
+        ),
+        info.ifsc_code && React.createElement('div', { className: 'payment-row' },
+          React.createElement('div', { className: 'payment-key' }, 'IFSC Code'),
+          React.createElement('div', { className: 'payment-val' }, info.ifsc_code)
+        ),
+
+        info.phone && React.createElement('div', { style:{marginTop:20} },
+          React.createElement('div', { className: 'payment-title', style:{marginBottom:12} }, '📞 Contact Us'),
+          React.createElement('div', { style:{display:'flex', flexDirection:'column', gap:10} },
+            React.createElement('a', {
+              href: `tel:${info.phone}`,
+              style:{fontFamily:'DM Mono, monospace', fontSize:'0.95rem', color:'var(--text)', textDecoration:'none'}
+            }, '📞 ' + info.phone),
+            React.createElement('a', {
+              href: `https://wa.me/91${info.phone}`,
+              target: '_blank',
+              style:{
+                display:'inline-flex', alignItems:'center', gap:8,
+                background:'rgba(37,211,102,0.1)', border:'1px solid rgba(37,211,102,0.3)',
+                borderRadius:2, padding:'8px 14px', color:'#25D366',
+                fontFamily:'Outfit, sans-serif', fontSize:'0.8rem', letterSpacing:'0.06em',
+                textDecoration:'none', width:'fit-content'
+              }
+            }, '💬 WhatsApp Us')
+          )
+        )
+      ),
+
+      React.createElement('div', { className: 'payment-block' },
+        React.createElement('div', { className: 'payment-title' }, '📱 UPI Payment'),
+        info.upi_id && React.createElement('div', { style:{marginBottom:20} },
+          React.createElement('div', { className: 'payment-key', style:{marginBottom:8} }, 'UPI ID'),
+          React.createElement('div', { className: 'upi-chip' }, '📲 ', info.upi_id)
+        ),
+        info.qr_code_url && React.createElement('div', null,
+          React.createElement('div', { className: 'payment-key', style:{marginBottom:8} }, 'Scan QR Code'),
+          React.createElement('img', {
+            src: info.qr_code_url, alt: 'UPI QR',
+            style:{width:150, height:150, borderRadius:6, border:'1px solid var(--border)', display:'block'}
+          })
+        )
+      )
+    )
+  );
+}
+
+// ── Admin Panel ───────────────────────────────────────────────────────────────
+function AdminPanel({ push }) {
+  const [authed, setAuthed]         = useState(false);
+  const [key, setKey]               = useState('');
+  const [bookings, setBookings]     = useState([]);
+  const [adminItems, setAdminItems] = useState([]);
+  const [showAddItem, setShowAddItem] = useState(false);
+  const [newItem, setNewItem]       = useState({ name:'', type:'gold', unit:'gram', base_price_type:'mcx', margin:0, manual_price:'', is_active:true });
+  const [tab, setTab]               = useState('bookings');
+
+  const login = () => {
+    if (key === ADMIN_KEY) { setAuthed(true); loadData(); }
+    else push('Invalid admin key', 'error');
+  };
+
+  const loadData = async () => {
+    try {
+      const [b, it] = await Promise.all([
+        api.adminGet('/admin/bookings'),
+        api.adminGet('/admin/items')
+      ]);
+      setBookings(Array.isArray(b) ? b : []);
+      setAdminItems(Array.isArray(it) ? it : []);
+    } catch { push('Failed to load data', 'error'); }
+  };
+
+  const addItem = async () => {
+    const payload = { ...newItem, margin: parseFloat(newItem.margin) || 0 };
+    if (payload.base_price_type === 'manual') payload.manual_price = parseFloat(payload.manual_price) || 0;
+    else delete payload.manual_price;
+    const res = await api.adminPost('/admin/item', payload);
+    if (res.id) { push('Item added!'); setShowAddItem(false); loadData(); }
+    else push(res.detail || 'Failed to add item', 'error');
+  };
+
+  const toggleItem = async (item) => {
+    await api.adminPut(`/admin/item/${item.id}`, { is_active: !item.is_active });
+    push(`Item ${item.is_active ? 'disabled' : 'enabled'}`);
+    loadData();
+  };
+
+  const setBookingStatus = async (bookingId, status) => {
+    const res = await api.adminPut(`/admin/bookings/${bookingId}/status`, { status });
+    if (res.id) { push(`Booking #${bookingId} → ${status}`); loadData(); }
+    else push(res.detail || 'Update failed', 'error');
+  };
+
+  const inpNI = (f) => (e) => setNewItem(p => ({ ...p, [f]: e.target.value }));
+
+  if (!authed) return React.createElement('div', null,
+    React.createElement('div', { className: 'admin-login' },
+      React.createElement('div', { className: 'admin-login-title' }, '⚜ Admin Access'),
+      React.createElement('div', { className: 'field', style: { marginBottom: 20 } },
+        React.createElement('label', null, 'Admin API Key'),
+        React.createElement('input', {
+          type: 'password', placeholder: 'Enter admin key', value: key,
+          onChange: e => setKey(e.target.value),
+          onKeyDown: e => e.key === 'Enter' && login()
+        })
+      ),
+      React.createElement('button', { className: 'btn btn-primary', style: { width: '100%' }, onClick: login }, 'Access Admin Panel')
+    )
+  );
+
+  const byStatus  = (s) => bookings.filter(b => b.status === s).length;
+  const completed = bookings.filter(b => b.status === 'completed').reduce((s, b) => s + b.total_amount, 0);
+
+  const statusColor = { requested:'var(--gold)', contacted:'var(--silver)', confirmed:'#7B9EE0', completed:'var(--green)' };
+
+  const nextActions = {
+    requested:  [['contacted', 'Mark Contacted']],
+    contacted:  [['confirmed', 'Mark Confirmed']],
+    confirmed:  [['completed', 'Mark Completed']],
+    completed:  [],
+  };
+
+  return React.createElement('div', null,
+
+    // ── Stats ──
+    React.createElement('div', { className: 'admin-grid', style: { marginBottom: 32 } },
+      React.createElement('div', { className: 'stat-card' },
+        React.createElement('div', { className: 'stat-num' }, bookings.length),
+        React.createElement('div', { className: 'stat-label' }, 'Total Bookings')
+      ),
+      React.createElement('div', { className: 'stat-card' },
+        React.createElement('div', { className: 'stat-num', style:{color:'var(--gold)'} }, byStatus('requested')),
+        React.createElement('div', { className: 'stat-label' }, 'New Requests')
+      ),
+      React.createElement('div', { className: 'stat-card' },
+        React.createElement('div', { className: 'stat-num', style:{color:'#7B9EE0'} }, byStatus('confirmed')),
+        React.createElement('div', { className: 'stat-label' }, 'Confirmed')
+      ),
+      React.createElement('div', { className: 'stat-card' },
+        React.createElement('div', { className: 'stat-num', style:{fontSize:'1.5rem', color:'var(--green)'} },
+          `₹${completed.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
+        ),
+        React.createElement('div', { className: 'stat-label' }, 'Completed Value')
+      )
+    ),
+
+    // ── Tab nav ──
+    React.createElement('div', { style: { display: 'flex', gap: 8, marginBottom: 24 } },
+      ['bookings', 'items'].map(t =>
+        React.createElement('button', { key: t, className: `btn ${tab === t ? 'btn-primary' : 'btn-ghost'}`, onClick: () => setTab(t) },
+          t.toUpperCase()
+        )
+      )
+    ),
+
+    // ── Bookings tab ──
+    tab === 'bookings' && React.createElement('div', null,
+      bookings.length === 0
+        ? React.createElement('div', { className: 'empty' }, 'No booking requests yet.')
+        : React.createElement('div', { style: { overflowX: 'auto' } },
+            React.createElement('table', { className: 'orders-table' },
+              React.createElement('thead', null,
+                React.createElement('tr', null,
+                  // ── TASK 4: Added 'Suggestion' column header ──
+                  ...['#', 'Customer', 'Item', 'Qty', 'Price', 'Total', 'Status', 'Suggestion', 'Actions'].map(h =>
+                    React.createElement('th', { key: h }, h)
+                  )
+                )
+              ),
+              React.createElement('tbody', null,
+                ...bookings.map(b =>
+                  // ── TASK 4: Highlight 'requested' rows with orange outline ──
+                  React.createElement('tr', {
+                    key: b.id,
+                    style: {
+                      outline: b.status === 'requested' ? '2px solid rgba(255,165,0,0.5)' : 'none',
+                      outlineOffset: '-1px',
+                    }
+                  },
+
+                    React.createElement('td', null,
+                      React.createElement('span', { style:{fontFamily:'DM Mono, monospace'} }, `#${b.id}`)
+                    ),
+
+                    React.createElement('td', null,
+                      React.createElement('div', null, b.customer_name),
+                      b.customer_phone && React.createElement('a', {
+                        href: `https://wa.me/91${b.customer_phone}`,
+                        target: '_blank',
+                        style: { fontSize: '0.7rem', color: '#25D366', textDecoration: 'none' }
+                      }, '💬 ' + b.customer_phone)
+                    ),
+
+                    React.createElement('td', null, b.item_name),
+
+                    React.createElement('td', null,
+                      React.createElement('span', { style:{fontFamily:'DM Mono, monospace'} }, `${b.quantity} ${b.unit}`)
+                    ),
+
+                    React.createElement('td', { style: { fontFamily: 'DM Mono, monospace' } },
+                      `₹${b.price_at_booking?.toLocaleString('en-IN')}`
+                    ),
+
+                    React.createElement('td', { style: { fontFamily: 'DM Mono, monospace', color: 'var(--gold)' } },
+                      `₹${b.total_amount?.toLocaleString('en-IN')}`
+                    ),
+
+                    React.createElement('td', null,
+                      React.createElement('span', {
+                        className: 'status-badge',
+                        style: {
+                          background: `${statusColor[b.status]}18`,
+                          color: statusColor[b.status],
+                          border: `1px solid ${statusColor[b.status]}44`
+                        }
+                      }, b.status)
+                    ),
+
+                    // ── TASK 4: Suggestion column ──
+                    React.createElement('td', null,
+                      b.suggestion
+                        ? React.createElement('span', {
+                            style: {
+                              fontFamily: 'DM Mono, monospace',
+                              fontSize: '0.68rem',
+                              color: 'var(--gold)',
+                              background: 'rgba(201,168,76,0.1)',
+                              border: '1px solid rgba(201,168,76,0.25)',
+                              borderRadius: 10,
+                              padding: '2px 10px',
+                              whiteSpace: 'nowrap',
+                            }
+                          }, b.suggestion)
+                        : React.createElement('span', { style:{color:'var(--text-faint)', fontSize:'0.65rem'} }, '—')
+                    ),
+
+                    // Action buttons — only show valid next step
+                    React.createElement('td', null,
+                      React.createElement('div', { style: { display: 'flex', gap: 6, flexWrap: 'wrap' } },
+                        ...(nextActions[b.status] || []).map(([st, label]) =>
+                          React.createElement('button', {
+                            key: st,
+                            className: 'btn btn-ghost',
+                            style: { padding: '4px 10px', fontSize: '0.65rem', whiteSpace: 'nowrap' },
+                            onClick: () => setBookingStatus(b.id, st)
+                          }, label)
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+    ),
+
+    // ── Items tab ──
+    tab === 'items' && React.createElement('div', null,
+      React.createElement('div', { style: { marginBottom: 16 } },
+        React.createElement('button', { className: 'btn btn-primary', onClick: () => setShowAddItem(true) }, '+ Add Item')
+      ),
+      adminItems.length === 0
+        ? React.createElement('div', { className: 'empty' }, 'No items yet.')
+        : React.createElement('div', { style: { overflowX: 'auto' } },
+            React.createElement('table', { className: 'orders-table' },
+              React.createElement('thead', null,
+                React.createElement('tr', null,
+                  ...['ID', 'Name', 'Type', 'Unit', 'Price Type', 'Margin', 'Status', 'Action'].map(h =>
+                    React.createElement('th', { key: h }, h)
+                  )
+                )
+              ),
+              React.createElement('tbody', null,
+                ...adminItems.map(item =>
+                  React.createElement('tr', { key: item.id },
+                    React.createElement('td', null, item.id),
+                    React.createElement('td', null, item.name),
+                    React.createElement('td', null, item.type),
+                    React.createElement('td', null, item.unit),
+                    React.createElement('td', null, item.base_price_type),
+                    React.createElement('td', { style: { fontFamily: 'DM Mono, monospace' } }, `₹${item.margin}`),
+                    React.createElement('td', null,
+                      React.createElement('span', {
+                        className: 'status-badge',
+                        style: item.is_active
+                          ? { background:'rgba(90,156,106,0.1)', color:'var(--green)', border:'1px solid rgba(90,156,106,0.3)' }
+                          : { background:'rgba(192,85,90,0.1)',  color:'var(--red)',   border:'1px solid rgba(192,85,90,0.3)' }
+                      }, item.is_active ? 'Active' : 'Disabled')
+                    ),
+                    React.createElement('td', null,
+                      React.createElement('button', {
+                        className: 'btn btn-ghost',
+                        style: { padding: '4px 10px', fontSize: '0.65rem' },
+                        onClick: () => toggleItem(item)
+                      }, item.is_active ? 'Disable' : 'Enable')
+                    )
+                  )
+                )
+              )
+            )
+          ),
+
+      // ── Add Item Modal ──
+      showAddItem && React.createElement('div', { className: 'modal-overlay', onClick: e => e.target === e.currentTarget && setShowAddItem(false) },
+        React.createElement('div', { className: 'modal' },
+          React.createElement('div', { className: 'modal-title' }, 'Add New Item'),
+          React.createElement('div', { className: 'modal-sub' }, 'Item will be visible publicly once added.'),
+          React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 14 } },
+            React.createElement('div', { className: 'field' },
+              React.createElement('label', null, 'Item Name'),
+              React.createElement('input', { type: 'text', placeholder: 'e.g. 24K Gold Bar', value: newItem.name, onChange: inpNI('name') })
+            ),
+            React.createElement('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 } },
+              React.createElement('div', { className: 'field' },
+                React.createElement('label', null, 'Type'),
+                React.createElement('select', { value: newItem.type, onChange: inpNI('type') },
+                  React.createElement('option', { value: 'gold' }, 'Gold'),
+                  React.createElement('option', { value: 'silver' }, 'Silver'),
+                  React.createElement('option', { value: 'other' }, 'Other')
+                )
+              ),
+              React.createElement('div', { className: 'field' },
+                React.createElement('label', null, 'Unit'),
+                React.createElement('select', { value: newItem.unit, onChange: inpNI('unit') },
+                  React.createElement('option', { value: 'gram' }, 'Gram'),
+                  React.createElement('option', { value: 'kg' }, 'Kg'),
+                  React.createElement('option', { value: 'piece' }, 'Piece')
+                )
+              ),
+              React.createElement('div', { className: 'field' },
+                React.createElement('label', null, 'Price Type'),
+                React.createElement('select', { value: newItem.base_price_type, onChange: inpNI('base_price_type') },
+                  React.createElement('option', { value: 'mcx' }, 'MCX (Live)'),
+                  React.createElement('option', { value: 'manual' }, 'Manual')
+                )
+              ),
+              React.createElement('div', { className: 'field' },
+                React.createElement('label', null, 'Margin (₹)'),
+                React.createElement('input', { type: 'number', value: newItem.margin, onChange: inpNI('margin') })
+              ),
+            ),
+            newItem.base_price_type === 'manual' && React.createElement('div', { className: 'field' },
+              React.createElement('label', null, 'Manual Price (₹)'),
+              React.createElement('input', { type: 'number', value: newItem.manual_price, onChange: inpNI('manual_price') })
+            ),
+          ),
+          React.createElement('div', { className: 'modal-actions' },
+            React.createElement('button', { className: 'btn btn-ghost', onClick: () => setShowAddItem(false) }, 'Cancel'),
+            React.createElement('button', { className: 'btn btn-primary', onClick: addItem }, 'Add Item')
+          )
+        )
+      )
+    )
+  );
+}
+
+// ── App Root ──────────────────────────────────────────────────────────────────
+function App() {
+  const [tab, setTab]       = useState('market');
+  const [prices, setPrices] = useState([]);
+  const [items, setItems]   = useState([]);
+  const [loading, setLoading] = useState(true);
+  const { toasts, push }    = useToast();
+
+  useEffect(() => {
+    Promise.all([
+      api.get('/prices').catch(()=>[]),
+      api.get('/items').catch(()=>[])
+    ]).then(([p, it]) => {
+      setPrices(Array.isArray(p) ? p : []);
+      setItems(Array.isArray(it) ? it : []);
+      setLoading(false);
+    });
+  }, []);
+
+  const isAdminRoute = window.location.pathname === '/admin';
+
+  const TABS = [
+    { id:'market',  label:'Market Prices' },
+    { id:'booking', label:'Request Booking' },
+    { id:'payment', label:'How to Pay' },
+  ];
+
+  if (isAdminRoute) return React.createElement('div', null,
+    React.createElement('div', { className: 'app' },
+      React.createElement('header', null,
+        React.createElement('div', { className:'logo' }, 'SWARNA', React.createElement('span', null, 'Admin Panel'))
+      ),
+      React.createElement('div', { className:'section' },
+        React.createElement('div', { className:'section-head' },
+          React.createElement('div', { className:'section-title' }, 'Admin Panel'),
+          React.createElement('div', { className:'section-line' })
+        ),
+        React.createElement(AdminPanel, { push })
+      )
+    ),
+    React.createElement(ToastBar, { toasts })
+  );
+
+  return React.createElement('div', null,
+    React.createElement(Ticker, { prices }),
+
+    React.createElement('div', { className: 'app' },
+      React.createElement('header', null,
+        React.createElement('div', { className:'logo' }, 'SWARNA', React.createElement('span', null, 'Gold & Silver Trading')),
+        React.createElement('nav', { className:'nav' },
+          ...TABS.map(t =>
+            React.createElement('button', { key:t.id, className:tab===t.id?'active':'', onClick:()=>setTab(t.id) }, t.label)
+          )
+        )
+      ),
+
+      tab === 'market' && React.createElement('div', { className:'section' },
+        React.createElement('div', { className:'section-head' },
+          React.createElement('div', { className:'section-title' }, 'Live Market Prices'),
+          React.createElement('div', { className:'section-line' }),
+          React.createElement('div', { className:'section-sub' }, 'MCX')
+        ),
+        React.createElement(PricesSection, { prices, loading }),
+
+        React.createElement('div', { className:'section-head', style:{marginTop:48} },
+          React.createElement('div', { className:'section-title' }, 'Our Products'),
+          React.createElement('div', { className:'section-line' }),
+          React.createElement('div', { className:'section-sub' }, `${items.length} items`)
+        ),
+        React.createElement(ItemsSection, { items, loading, selected:null, onSelect: ()=>setTab('booking') })
+      ),
+
+      tab === 'booking' && React.createElement('div', { className:'section' },
+        React.createElement('div', { className:'section-head' },
+          React.createElement('div', { className:'section-title' }, 'Request a Booking'),
+          React.createElement('div', { className:'section-line' }),
+          React.createElement('div', { className:'section-sub' }, 'No payment now')
+        ),
+        React.createElement(BookingSection, { items, push })
+      ),
+
+      tab === 'payment' && React.createElement('div', { className:'section' },
+        React.createElement('div', { className:'section-head' },
+          React.createElement('div', { className:'section-title' }, 'Payment Details'),
+          React.createElement('div', { className:'section-line' })
+        ),
+        React.createElement(PaymentSection)
+      )
+    ),
+
+    React.createElement(ToastBar, { toasts })
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+</script>
+</body>
+</html>
